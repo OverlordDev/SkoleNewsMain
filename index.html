@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Panel - Gjermundnes vidaregåande skule</title>
+    <title>SchoolConnect - Gjermundnes vidaregåande skule</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
-        import { getDatabase, ref, push, set, onValue, remove } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
+        import { getDatabase, ref, onValue, orderByKey, limitToLast } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-database.js';
 
         // Firebase configuration - REPLACE WITH YOUR CONFIG
         const firebaseConfig = {
@@ -29,10 +29,9 @@
         window.firebaseApp = app;
         window.firebaseDatabase = database;
         window.firebaseRef = ref;
-        window.firebasePush = push;
-        window.firebaseSet = set;
         window.firebaseOnValue = onValue;
-        window.firebaseRemove = remove;
+        window.firebaseOrderByKey = orderByKey;
+        window.firebaseLimitToLast = limitToLast;
     </script>
 
     <style>
@@ -44,22 +43,79 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background: #0f0f0f;
+            background: #0a0a0a;
             color: #ffffff;
             line-height: 1.6;
+            overflow-x: hidden;
         }
 
-        /* Connection Status */
+        .header {
+            background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
+            border-bottom: 3px solid #ffffff;
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 30px rgba(255, 255, 255, 0.2);
+        }
+
+        .nav-container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-family: 'Playfair Display', serif;
+            font-size: 36px;
+            font-weight: 700;
+            color: #ffffff;
+            text-decoration: none;
+            border-bottom: 2px solid #ffffff;
+            padding-bottom: 5px;
+        }
+
+        .school-name {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+            margin-top: 5px;
+            font-weight: 400;
+        }
+
+        .nav-menu {
+            display: flex;
+            list-style: none;
+            gap: 40px;
+            align-items: center;
+        }
+
+        .nav-menu a {
+            color: rgba(255, 255, 255, 0.8);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            padding: 10px 0;
+            border-bottom: 2px solid transparent;
+        }
+
+        .nav-menu a:hover {
+            color: #ffffff;
+            border-bottom-color: #ffffff;
+        }
+
         .connection-status {
             position: fixed;
             top: 20px;
             right: 20px;
-            background: rgba(0, 0, 0, 0.9);
+            background: rgba(0, 0, 0, 0.8);
             border: 1px solid rgba(255, 255, 255, 0.2);
             border-radius: 8px;
-            padding: 12px 16px;
+            padding: 10px 15px;
             font-size: 14px;
-            z-index: 3000;
+            z-index: 2000;
             backdrop-filter: blur(10px);
             opacity: 0;
             transform: translateY(-20px);
@@ -72,8 +128,8 @@
         }
 
         .connection-status.connected {
-            border-color: rgba(255, 255, 255, 0.5);
-            color: #ffffff;
+            border-color: rgba(0, 255, 0, 0.5);
+            color: #00ff00;
         }
 
         .connection-status.disconnected {
@@ -81,412 +137,373 @@
             color: #ff6666;
         }
 
-        /* Header */
-        .admin-header {
-            background: linear-gradient(135deg, #1a1a1a, #000000);
-            border-bottom: 3px solid #ffffff;
-            padding: 20px 0;
-            box-shadow: 0 2px 30px rgba(255, 255, 255, 0.2);
+        .hero {
+            background: linear-gradient(135deg, #1a1a1a 0%, #000000 100%);
+            padding: 100px 0;
+            text-align: center;
+            position: relative;
         }
 
-        .header-container {
+        .hero-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 30px;
+        }
+
+        .hero-badge {
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid #ffffff;
+            color: #ffffff;
+            padding: 10px 20px;
+            border-radius: 25px;
+            font-size: 14px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .hero-title {
+            font-family: 'Playfair Display', serif;
+            font-size: clamp(42px, 6vw, 72px);
+            font-weight: 700;
+            margin-bottom: 30px;
+            background: linear-gradient(135deg, #ffffff 0%, #cccccc 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .hero-subtitle {
+            font-size: 22px;
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 50px;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .cta-buttons {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-bottom: 80px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ffffff, #f0f0f0);
+            color: #000000;
+            padding: 18px 36px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 35px rgba(255, 255, 255, 0.3);
+            background: linear-gradient(135deg, #f0f0f0, #ffffff);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #ffffff;
+            padding: 18px 36px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: #ffffff;
+        }
+
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 40px;
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .stat-item {
+            text-align: center;
+            padding: 30px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-number {
+            font-size: 48px;
+            font-weight: 700;
+            color: #ffffff;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .stat-label {
+            font-size: 16px;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 500;
+        }
+
+        .news-section {
+            padding: 100px 0;
+            background: #0f0f0f;
+        }
+
+        .news-container {
             max-width: 1400px;
             margin: 0 auto;
             padding: 0 30px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
         }
 
-        .admin-logo {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .admin-logo i {
-            font-size: 32px;
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 48px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 20px;
             color: #ffffff;
         }
 
-        .admin-title {
-            font-size: 28px;
+        .section-subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 20px;
+            margin-bottom: 60px;
+        }
+
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 40px;
+        }
+
+        .news-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 30px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .news-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #ffffff, #f0f0f0);
+        }
+
+        .news-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-5px);
+        }
+
+        .news-date {
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .news-title {
+            font-size: 24px;
             font-weight: 700;
             color: #ffffff;
+            margin-bottom: 15px;
+            line-height: 1.3;
         }
 
-        .admin-subtitle {
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.7);
-            margin-top: 5px;
+        .news-excerpt {
+            color: rgba(255, 255, 255, 0.8);
+            margin-bottom: 20px;
+            line-height: 1.6;
         }
 
-        .admin-user {
+        .news-author {
             display: flex;
             align-items: center;
             gap: 15px;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .user-avatar {
-            width: 50px;
-            height: 50px;
+        .author-avatar {
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: linear-gradient(135deg, #ffffff, #f0f0f0);
             color: #000000;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: 700;
-            font-size: 18px;
+            font-weight: 600;
         }
 
-        .user-info h3 {
+        .author-info h4 {
             color: #ffffff;
             font-size: 16px;
             margin-bottom: 5px;
         }
 
-        .user-info span {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 14px;
-        }
-
-        .back-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: #ffffff;
-            padding: 12px 20px;
-            border-radius: 8px;
-            text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            transition: all 0.3s ease;
-        }
-
-        .back-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
-            border-color: #ffffff;
-        }
-
-        /* Main Content */
-        .admin-main {
-            max-width: 1400px;
-            margin: 0 auto;
-            padding: 40px 30px;
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 40px;
-        }
-
-        /* News Form */
-        .news-form-section {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 40px;
-            height: fit-content;
-        }
-
-        .section-title {
-            font-size: 24px;
-            font-weight: 700;
-            color: #ffffff;
-            margin-bottom: 30px;
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .section-title i {
-            color: #ffffff;
-            font-size: 28px;
-        }
-
-        .form-group {
-            margin-bottom: 25px;
-        }
-
-        .form-label {
-            display: block;
-            color: #ffffff;
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 14px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-
-        .form-input, .form-textarea, .form-select {
-            width: 100%;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 10px;
-            padding: 15px;
-            color: #ffffff;
-            font-size: 16px;
-            transition: all 0.3s ease;
-        }
-
-        .form-input:focus, .form-textarea:focus, .form-select:focus {
-            outline: none;
-            border-color: #ffffff;
-            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
-            background: rgba(255, 255, 255, 0.08);
-        }
-
-        .form-textarea {
-            min-height: 120px;
-            resize: vertical;
-        }
-
-        .form-input::placeholder, .form-textarea::placeholder {
-            color: rgba(255, 255, 255, 0.5);
-        }
-
-        .submit-btn {
-            width: 100%;
-            background: linear-gradient(135deg, #ffffff, #f0f0f0);
-            border: none;
-            color: #000000;
-            padding: 18px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px;
-        }
-
-        .submit-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 15px 35px rgba(255, 255, 255, 0.3);
-        }
-
-        .submit-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-            transform: none;
-            box-shadow: none;
-        }
-
-        /* News List */
-        .news-list-section {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            padding: 40px;
-        }
-
-        .news-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-
-        .stat-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 20px;
-            text-align: center;
-        }
-
-        .stat-number {
-            font-size: 32px;
-            font-weight: 700;
-            color: #ffffff;
-            display: block;
-            margin-bottom: 8px;
-        }
-
-        .stat-label {
-            font-size: 14px;
-            color: rgba(255, 255, 255, 0.8);
-            font-weight: 500;
-        }
-
-        .news-item {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-            padding: 25px;
-            margin-bottom: 20px;
-            position: relative;
-            transition: all 0.3s ease;
-        }
-
-        .news-item:hover {
-            background: rgba(255, 255, 255, 0.05);
-            border-color: rgba(255, 255, 255, 0.3);
-        }
-
-        .news-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 15px;
-        }
-
-        .news-title {
-            font-size: 20px;
-            font-weight: 600;
-            color: #ffffff;
-            margin-bottom: 8px;
-        }
-
-        .news-meta {
-            display: flex;
-            gap: 20px;
+        .author-info span {
             color: rgba(255, 255, 255, 0.6);
             font-size: 14px;
         }
 
-        .news-content {
-            color: rgba(255, 255, 255, 0.8);
-            margin-bottom: 15px;
-            line-height: 1.6;
+        .no-news {
+            text-align: center;
+            padding: 80px 40px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            margin: 40px 0;
         }
 
-        .news-actions {
-            display: flex;
-            gap: 10px;
+        .no-news-icon {
+            font-size: 64px;
+            color: rgba(255, 255, 255, 0.3);
+            margin-bottom: 30px;
         }
 
-        .edit-btn, .delete-btn {
-            padding: 8px 16px;
-            border: none;
-            border-radius: 6px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .edit-btn {
-            background: rgba(255, 255, 255, 0.1);
+        .no-news h3 {
+            font-size: 28px;
             color: #ffffff;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            margin-bottom: 15px;
+            font-weight: 600;
         }
 
-        .edit-btn:hover {
-            background: rgba(255, 255, 255, 0.2);
+        .no-news p {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 18px;
+            margin-bottom: 30px;
         }
 
-        .delete-btn {
-            background: rgba(255, 0, 0, 0.2);
-            color: #ff6666;
-            border: 1px solid rgba(255, 0, 0, 0.3);
-        }
-
-        .delete-btn:hover {
-            background: rgba(255, 0, 0, 0.3);
-        }
-
-        /* Loading and Messages */
         .loading {
             text-align: center;
-            padding: 40px;
+            padding: 60px;
             color: rgba(255, 255, 255, 0.6);
         }
 
         .spinner {
-            width: 30px;
-            height: 30px;
-            border: 3px solid rgba(255, 255, 255, 0.2);
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.2);
             border-radius: 50%;
             border-top-color: #ffffff;
             animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
+            margin: 0 auto 20px;
         }
 
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
 
-        .message {
-            padding: 15px;
-            border-radius: 8px;
+        .admin-section {
+            background: #000000;
+            border-top: 3px solid #ffffff;
+            padding: 60px 0;
+            text-align: center;
+        }
+
+        .admin-container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 0 30px;
+        }
+
+        .admin-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: #ffffff;
             margin-bottom: 20px;
-            display: flex;
+        }
+
+        .admin-subtitle {
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 40px;
+            font-size: 16px;
+        }
+
+        .admin-login-btn {
+            background: linear-gradient(135deg, #ffffff, #f0f0f0);
+            color: #000000;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: inline-flex;
             align-items: center;
             gap: 10px;
         }
 
-        .message.success {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            color: #ffffff;
-        }
-
-        .message.error {
-            background: rgba(255, 0, 0, 0.2);
-            border: 1px solid rgba(255, 0, 0, 0.3);
-            color: #ff6666;
-        }
-
-        /* Empty State */
-        .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: rgba(255, 255, 255, 0.6);
-        }
-
-        .empty-state i {
-            font-size: 64px;
-            margin-bottom: 20px;
-            color: rgba(255, 255, 255, 0.3);
-        }
-
-        .empty-state h3 {
-            font-size: 24px;
-            color: #ffffff;
-            margin-bottom: 10px;
-        }
-
-        .empty-state p {
-            font-size: 16px;
-            margin-bottom: 20px;
+        .admin-login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(255, 255, 255, 0.2);
         }
 
         /* Mobile Responsive */
         @media (max-width: 768px) {
-            .admin-main {
-                grid-template-columns: 1fr;
-                padding: 20px 15px;
-                gap: 30px;
+            .nav-container {
+                flex-direction: column;
+                gap: 20px;
+                padding: 0 15px;
             }
 
-            .header-container {
-                padding: 0 15px;
-                flex-direction: column;
+            .nav-menu {
                 gap: 20px;
             }
 
-            .news-stats {
-                grid-template-columns: 1fr;
-                gap: 15px;
+            .hero-container {
+                padding: 0 20px;
             }
 
-            .news-header {
+            .cta-buttons {
                 flex-direction: column;
-                gap: 10px;
+                align-items: center;
             }
 
-            .connection-status {
-                position: relative;
-                top: auto;
-                right: auto;
-                margin: 10px;
+            .stats {
+                grid-template-columns: 1fr;
+                gap: 20px;
+            }
+
+            .news-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .news-container {
+                padding: 0 20px;
             }
         }
 
@@ -510,120 +527,104 @@
 <body>
     <!-- Connection Status -->
     <div id="connection-status" class="connection-status">
-        <div id="status-text">Connecting to Firebase...</div>
+        <div id="status-text">Connecting to database...</div>
     </div>
 
-    <!-- Admin Header -->
-    <header class="admin-header">
-        <div class="header-container">
-            <div class="admin-logo">
-                <i class="fas fa-shield-alt"></i>
-                <div>
-                    <h1 class="admin-title">Admin Panel</h1>
-                    <p class="admin-subtitle">Gjermundnes vidaregåande skule - SchoolConnect</p>
-                </div>
+    <!-- Header -->
+    <header class="header">
+        <nav class="nav-container">
+            <div>
+                <a href="#" class="logo">SchoolConnect</a>
+                <div class="school-name">Gjermundnes vidaregåande skule</div>
             </div>
-
-            <div class="admin-user">
-                <div class="user-avatar">AD</div>
-                <div class="user-info">
-                    <h3>Administrator</h3>
-                    <span>School Administrator</span>
-                </div>
-                <a href="index.html" class="back-btn">
-                    <i class="fas fa-arrow-left"></i>
-                    Back to School Website
-                </a>
-            </div>
-        </div>
+            <ul class="nav-menu">
+                <li><a href="#home">Home</a></li>
+                <li><a href="#news">School News</a></li>
+                <li><a href="#about">About School</a></li>
+                <li><a href="#contact">Contact</a></li>
+            </ul>
+        </nav>
     </header>
 
-    <!-- Admin Main Content -->
-    <main class="admin-main">
-        <!-- News Form Section -->
-        <section class="news-form-section">
-            <h2 class="section-title">
-                <i class="fas fa-plus-circle"></i>
-                Add New Article
-            </h2>
+    <!-- Hero Section -->
+    <section id="home" class="hero">
+        <div class="hero-container">
+            <div class="hero-badge">Leading Educational Innovation in Norway</div>
 
-            <div id="message-container"></div>
+            <h1 class="hero-title">Welcome to the School of the Future</h1>
 
-            <form id="news-form">
-                <div class="form-group">
-                    <label for="news-title" class="form-label">Article Title</label>
-                    <input type="text" id="news-title" class="form-input" placeholder="Enter article title" required>
-                </div>
+            <p class="hero-subtitle">
+                SchoolConnect revolutionizes how students, teachers and parents communicate. 
+                Safe, modern and built specifically for Norwegian educational institutions like Gjermundnes vidaregåande skule.
+            </p>
 
-                <div class="form-group">
-                    <label for="news-category" class="form-label">Category</label>
-                    <select id="news-category" class="form-select" required>
-                        <option value="">Select category</option>
-                        <option value="📚 Education">📚 Education</option>
-                        <option value="💻 Technology">💻 Technology</option>
-                        <option value="⚽ Sports">⚽ Sports</option>
-                        <option value="🎨 Culture">🎨 Culture</option>
-                        <option value="📅 Events">📅 Events</option>
-                        <option value="🤝 Partnership">🤝 Partnership</option>
-                        <option value="⚠️ Important News">⚠️ Important News</option>
-                    </select>
-                </div>
-
-                <div class="form-group">
-                    <label for="news-author" class="form-label">Author</label>
-                    <input type="text" id="news-author" class="form-input" placeholder="Author name" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="news-content" class="form-label">Article Content</label>
-                    <textarea id="news-content" class="form-textarea" placeholder="Write the full article content here..." required></textarea>
-                </div>
-
-                <button type="submit" id="submit-btn" class="submit-btn">
-                    <i class="fas fa-paper-plane"></i>
-                    Publish Article
-                </button>
-            </form>
-        </section>
-
-        <!-- News List Section -->
-        <section class="news-list-section">
-            <h2 class="section-title">
-                <i class="fas fa-newspaper"></i>
-                Published Articles
-            </h2>
+            <div class="cta-buttons">
+                <a href="#news" class="btn-primary">
+                    <i class="fas fa-rocket"></i>
+                    Explore Our School
+                </a>
+                <a href="#news" class="btn-secondary">
+                    <i class="fas fa-newspaper"></i>
+                    Read Latest News
+                </a>
+            </div>
 
             <!-- Statistics -->
-            <div class="news-stats">
-                <div class="stat-card">
-                    <span id="total-news" class="stat-number">0</span>
-                    <div class="stat-label">Total Articles</div>
+            <div class="stats">
+                <div class="stat-item">
+                    <span class="stat-number">500+</span>
+                    <div class="stat-label">Active Students</div>
                 </div>
-                <div class="stat-card">
-                    <span id="today-news" class="stat-number">0</span>
-                    <div class="stat-label">Today</div>
+                <div class="stat-item">
+                    <span class="stat-number">45</span>
+                    <div class="stat-label">Expert Teachers</div>
                 </div>
-                <div class="stat-card">
-                    <span id="week-news" class="stat-number">0</span>
-                    <div class="stat-label">This Week</div>
+                <div class="stat-item">
+                    <span class="stat-number">15+</span>
+                    <div class="stat-label">Study Programs</div>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">100%</span>
+                    <div class="stat-label">Digital Security</div>
                 </div>
             </div>
+        </div>
+    </section>
 
-            <!-- News List -->
-            <div id="news-list" class="loading">
+    <!-- News Section -->
+    <section id="news" class="news-section">
+        <div class="news-container">
+            <h2 class="section-title">Latest School News</h2>
+            <p class="section-subtitle">Stay updated on what's happening at Gjermundnes vidaregåande skule</p>
+
+            <!-- News Container -->
+            <div id="news-container" class="loading">
                 <div class="spinner"></div>
-                <p>Loading articles from Firebase...</p>
+                <p>Loading news from database...</p>
             </div>
-        </section>
-    </main>
+        </div>
+    </section>
+
+    <!-- Admin Section -->
+    <section class="admin-section">
+        <div class="admin-container">
+            <h3 class="admin-title">Administrator Panel</h3>
+            <p class="admin-subtitle">Manage school news and website content</p>
+            <button class="admin-login-btn" onclick="showLoginModal()">
+                <i class="fas fa-user-shield"></i>
+                Login as Administrator
+            </button>
+        </div>
+    </section>
 
     <script>
         let connectionStatus = false;
 
         window.addEventListener('load', function() {
+            console.log('🚀 Page loaded, starting Firebase...');
             setTimeout(() => {
                 initializeFirebase();
-                initAdmin();
+                loadNews();
             }, 1000);
         });
 
@@ -657,283 +658,219 @@
 
             if (connectionStatus) {
                 statusElement.className = 'connection-status show connected';
-                statusText.innerHTML = '<i class="fas fa-check-circle"></i> Firebase connected';
+                statusText.innerHTML = '<i class="fas fa-check-circle"></i> Connected to database';
             } else {
                 statusElement.className = 'connection-status show disconnected';
-                statusText.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Firebase not connected';
+                statusText.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Database not connected';
             }
 
             if (connectionStatus) {
                 setTimeout(() => {
                     statusElement.classList.remove('show');
-                }, 4000);
+                }, 3000);
             }
         }
 
-        function initAdmin() {
-            try {
-                loadNewsList();
-                setupFormHandler();
-                console.log('✅ Admin panel initialized successfully');
-            } catch (error) {
-                console.error('❌ Error initializing admin:', error);
-                showMessage('Error during initialization. Check Firebase configuration.', 'error');
-            }
-        }
-
-        function setupFormHandler() {
-            const newsForm = document.getElementById('news-form');
-            if (newsForm) {
-                newsForm.addEventListener('submit', handleFormSubmit);
-                console.log('✅ Form handler attached successfully');
-            } else {
-                console.error('❌ Form not found! Check HTML IDs');
-                showMessage('Form not found! Check HTML structure.', 'error');
-            }
-        }
-
-        async function handleFormSubmit(e) {
-            e.preventDefault();
-            console.log('📝 Form submitted, processing...');
-
-            const submitBtn = document.getElementById('submit-btn');
-            const originalText = submitBtn.innerHTML;
+        function loadNews() {
+            console.log('📰 Loading news from Firebase...');
 
             try {
-                const title = document.getElementById('news-title').value.trim();
-                const category = document.getElementById('news-category').value;
-                const author = document.getElementById('news-author').value.trim();
-                const content = document.getElementById('news-content').value.trim();
-
-                console.log('📊 Form data:', { title, category, author, content: content.substring(0, 50) + '...' });
-
-                if (!title || !category || !author || !content) {
-                    showMessage('❌ All fields must be filled out!', 'error');
+                if (!window.firebaseDatabase) {
+                    console.error('❌ Firebase database not available');
+                    showNoNews('Firebase not connected. Check configuration.');
                     return;
                 }
 
-                if (content.length < 50) {
-                    showMessage('❌ Content must be at least 50 characters long!', 'error');
-                    return;
-                }
-
-                submitBtn.disabled = true;
-                submitBtn.innerHTML = '<div class="spinner" style="width:16px;height:16px;margin:0 8px 0 0;border:2px solid rgba(0,0,0,0.3);border-top-color:#000;"></div> Publishing...';
-
-                const newsData = {
-                    title: title,
-                    content: content,
-                    author: author,
-                    category: category,
-                    timestamp: new Date().toISOString(),
-                    published: true
-                };
-
-                console.log('🔥 Publishing to Firebase:', newsData);
-
-                const newsRef = window.firebaseRef(window.firebaseDatabase, 'news');
-                await window.firebasePush(newsRef, newsData);
-
-                console.log('✅ Successfully published to Firebase');
-
-                showMessage('✅ Article has been published successfully!', 'success');
-
-                const newsForm = document.getElementById('news-form');
-                if (newsForm) {
-                    newsForm.reset();
-                    console.log('✅ Form reset successfully');
-                } else {
-                    console.error('❌ Could not find form to reset');
-                }
-
-                loadNewsList();
-
-            } catch (error) {
-                console.error('❌ Error publishing article:', error);
-                showMessage('❌ Publishing error: ' + error.message, 'error');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = originalText;
-            }
-        }
-
-        function loadNewsList() {
-            try {
                 const newsRef = window.firebaseRef(window.firebaseDatabase, 'news');
 
                 window.firebaseOnValue(newsRef, (snapshot) => {
+                    console.log('📊 Firebase snapshot received:', snapshot.exists());
+
                     const data = snapshot.val();
-                    displayNewsList(data);
-                    updateStats(data);
+                    console.log('📋 Data from Firebase:', data ? Object.keys(data).length + ' news items' : 'null');
+
+                    if (data) {
+                        displayNews(data);
+                    } else {
+                        console.log('📰 No news in database');
+                        showNoNews('No news available yet.');
+                    }
                 }, (error) => {
-                    console.error('Error loading news list:', error);
-                    document.getElementById('news-list').innerHTML = `
-                        <div class="empty-state">
-                            <i class="fas fa-exclamation-triangle"></i>
-                            <h3>Could not load articles</h3>
-                            <p>Check Firebase connection and try again.</p>
-                        </div>
-                    `;
+                    console.error('❌ Error loading news:', error);
+                    showNoNews('Error loading news: ' + error.message);
                 });
+
             } catch (error) {
-                console.error('Firebase connection error:', error);
-                showDemoNewsList();
+                console.error('❌ Critical Firebase error:', error);
+                showNoNews('Critical Firebase error. Check console.');
             }
         }
 
-        function displayNewsList(newsData) {
-            const container = document.getElementById('news-list');
+        function displayNews(newsData) {
+            console.log('🎨 Displaying news:', newsData);
+            const container = document.getElementById('news-container');
 
             if (!newsData) {
-                container.innerHTML = `
-                    <div class="empty-state">
-                        <i class="far fa-newspaper"></i>
-                        <h3>No articles published yet</h3>
-                        <p>Use the form on the left to publish the first article.</p>
-                    </div>
-                `;
+                console.log('❌ newsData empty');
+                showNoNews('No data to display.');
                 return;
             }
 
             const newsArray = Object.entries(newsData)
-                .map(([id, news]) => ({id, ...news}))
-                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+                .map(([id, news]) => {
+                    console.log('📄 Processing news:', id, news.title);
+                    return {id, ...news};
+                })
+                .filter(news => news.title && news.content && news.author)
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                .slice(0, 6);
 
-            const newsHTML = newsArray.map(news => `
-                <article class="news-item fade-in">
-                    <div class="news-header">
-                        <div>
-                            <h3 class="news-title">${news.title}</h3>
-                            <div class="news-meta">
-                                <span><i class="fas fa-user"></i> ${news.author}</span>
-                                <span><i class="fas fa-tag"></i> ${news.category}</span>
-                                <span><i class="far fa-clock"></i> ${formatDate(news.timestamp)}</span>
-                            </div>
-                        </div>
-                    </div>
-                    <p class="news-content">${news.content.substring(0, 200)}${news.content.length > 200 ? '...' : ''}</p>
-                    <div class="news-actions">
-                        <button class="edit-btn" onclick="editNews('${news.id}')">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                        <button class="delete-btn" onclick="deleteNews('${news.id}', '${news.title.replace(/'/g, "\'")}')">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                    </div>
-                </article>
-            `).join('');
+            console.log('📊 Filtered news:', newsArray.length);
 
-            container.innerHTML = newsHTML;
-        }
+            if (newsArray.length === 0) {
+                console.log('❌ No valid news after filtering');
+                showNoNews('No valid news to display.');
+                return;
+            }
 
-        function showDemoNewsList() {
-            const demoHTML = `
-                <div class="empty-state">
-                    <i class="fas fa-database"></i>
-                    <h3>Firebase not configured</h3>
-                    <p>To use the admin panel you need to configure Firebase. See instructions in README.md</p>
+            const newsHTML = `
+                <div class="news-grid">
+                    ${newsArray.map(news => {
+                        console.log('🏗️ Creating HTML for:', news.title);
+                        return `
+                            <article class="news-card fade-in">
+                                <div class="news-date">
+                                    <i class="far fa-calendar"></i>
+                                    ${formatDate(news.timestamp)}
+                                </div>
+                                <h3 class="news-title">${escapeHtml(news.title)}</h3>
+                                <p class="news-excerpt">${escapeHtml(news.content.substring(0, 150))}${news.content.length > 150 ? '...' : ''}</p>
+                                <div class="news-author">
+                                    <div class="author-avatar">
+                                        ${getInitials(news.author)}
+                                    </div>
+                                    <div class="author-info">
+                                        <h4>${escapeHtml(news.author)}</h4>
+                                        <span>${escapeHtml(news.category || 'General')}</span>
+                                    </div>
+                                </div>
+                            </article>
+                        `;
+                    }).join('')}
                 </div>
             `;
-            document.getElementById('news-list').innerHTML = demoHTML;
+
+            console.log('✅ HTML created, inserting into container');
+            container.innerHTML = newsHTML;
+
+            console.log('🎉 News successfully displayed!');
         }
 
-        function updateStats(newsData) {
-            if (!newsData) {
-                document.getElementById('total-news').textContent = '0';
-                document.getElementById('today-news').textContent = '0';
-                document.getElementById('week-news').textContent = '0';
-                return;
-            }
-
-            const newsArray = Object.values(newsData);
-            const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-
-            const totalNews = newsArray.length;
-            const todayNews = newsArray.filter(news => new Date(news.timestamp) >= today).length;
-            const weekNews = newsArray.filter(news => new Date(news.timestamp) >= weekAgo).length;
-
-            document.getElementById('total-news').textContent = totalNews;
-            document.getElementById('today-news').textContent = todayNews;
-            document.getElementById('week-news').textContent = weekNews;
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
 
-        async function deleteNews(newsId, newsTitle) {
-            if (!confirm(`Are you sure you want to delete the article "${newsTitle}"?`)) {
-                return;
-            }
-
-            try {
-                const newsRef = window.firebaseRef(window.firebaseDatabase, `news/${newsId}`);
-                await window.firebaseRemove(newsRef);
-                showMessage('✅ Article has been deleted successfully!', 'success');
-                loadNewsList();
-            } catch (error) {
-                console.error('Error deleting article:', error);
-                showMessage('❌ Deletion error: ' + error.message, 'error');
-            }
-        }
-
-        function editNews(newsId) {
-            alert('Edit function coming in next version! 🚧\n\nFor now you can delete and create new article.');
-        }
-
-        function showMessage(text, type) {
-            const container = document.getElementById('message-container');
-            const message = document.createElement('div');
-            message.className = `message ${type}`;
-            message.innerHTML = `
-                <i class="fas fa-${type === 'success' ? 'check-circle' : 'exclamation-triangle'}"></i>
-                ${text}
-            `;
-
-            container.innerHTML = '';
-            container.appendChild(message);
-
-            setTimeout(() => {
-                if (message.parentNode) {
-                    message.parentNode.removeChild(message);
-                }
-            }, 5000);
+        function getInitials(name) {
+            if (!name) return '??';
+            return name.split(' ').map(n => n[0]).join('').toUpperCase();
         }
 
         function formatDate(timestamp) {
-            const date = new Date(timestamp);
-            const now = new Date();
-            const diff = now - date;
-            const minutes = Math.floor(diff / 60000);
-            const hours = Math.floor(minutes / 60);
-            const days = Math.floor(hours / 24);
+            if (!timestamp) return 'Unknown date';
 
-            if (minutes < 1) return 'Just now';
-            if (minutes < 60) return `${minutes} min ago`;
-            if (hours < 24) return `${hours} hours ago`;
-            if (days < 7) return `${days} days ago`;
+            try {
+                const date = new Date(timestamp);
+                if (isNaN(date.getTime())) return 'Invalid date';
 
-            return date.toLocaleDateString('en-US', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-            });
+                return date.toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric'
+                });
+            } catch (error) {
+                console.error('Date formatting error:', error);
+                return 'Date error';
+            }
         }
 
-        console.log(`
-    ╔══════════════════════════════════════════════════════╗
-    ║                ADMIN PANEL v2.2 ENGLISH             ║
-    ║           Gjermundnes vidaregåande skule - SchoolConnect      ║
-    ║                                                      ║
-    ║  🔧 Manage school news and articles                  ║
-    ║  📝 Publish new content                              ║
-    ║  📊 View statistics and analytics                    ║
-    ║  🔥 Real-time Firebase integration                   ║
-    ║  📡 Live connection status                           ║
-    ║  ✅ Enhanced English interface                       ║
-    ║                                                      ║
-    ║  🇺🇸 Made for international schools                   ║
-    ║  ⚪ Clean minimalist design                          ║
-    ╚══════════════════════════════════════════════════════╝
-        `);
+        function showNoNews(message) {
+            const container = document.getElementById('news-container');
+            container.innerHTML = `
+                <div class="no-news">
+                    <div class="no-news-icon">
+                        <i class="far fa-newspaper"></i>
+                    </div>
+                    <h3>No News Yet</h3>
+                    <p>${message}</p>
+                    <a href="#" class="btn-secondary" onclick="showLoginModal()">
+                        <i class="fas fa-plus"></i>
+                        Add First Article
+                    </a>
+                </div>
+            `;
+        }
+
+        function showLoginModal() {
+            alert('🔑 Admin login function coming soon!\n\nFor now, go directly to admin_english.html');
+            window.location.href = 'admin_english.html';
+        }
+
+        // Smooth scrolling for navigation links
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'start'
+                    });
+                }
+            });
+        });
+
+        window.debugNews = function() {
+            console.clear();
+            console.log('🔍 DEBUG: Checking news manually...');
+
+            if (!window.firebaseDatabase) {
+                console.error('❌ Firebase not initialized');
+                return;
+            }
+
+            const newsRef = window.firebaseRef(window.firebaseDatabase, 'news');
+            window.firebaseOnValue(newsRef, (snapshot) => {
+                const data = snapshot.val();
+                console.log('📊 Raw data from Firebase:', data);
+
+                if (data) {
+                    console.log('📄 News list:');
+                    Object.entries(data).forEach(([id, news]) => {
+                        console.log(`  - ${id}:`, {
+                            title: news.title,
+                            author: news.author,
+                            category: news.category,
+                            timestamp: news.timestamp
+                        });
+                    });
+                } else {
+                    console.log('❌ No data');
+                }
+            }, { once: true });
+        };
+
+        window.reloadNews = function() {
+            console.log('🔄 Force reloading news...');
+            loadNews();
+        };
+
+        console.log('🏫 SchoolConnect main page loaded!');
+        console.log('🎯 Debug commands:');
+        console.log('   - debugNews() - show raw Firebase data');
+        console.log('   - reloadNews() - force reload news');
     </script>
 </body>
 </html>
